@@ -13,10 +13,10 @@ from tools.utils_remote import append_ak_quote_dict, DataSource
 from delegate.xt_subscriber import XtSubscriber, update_position_held
 
 from trader.buyer import BaseBuyer as Buyer
-from trader.pools import StocksPoolWhitePrefixesMA as Pool
-from trader.seller_groups import DeepseekGroupSeller as Seller
+from trader.pools import StocksPoolWhiteCustomSymbol as Pool
+from trader.seller_groups import EMAGroupSeller as Seller
 
-from selector.selector_deepseek import select
+from selector.selector_ema import select
 
 data_source = DataSource.AKSHARE
 
@@ -46,27 +46,22 @@ def debug(*args):
 
 
 class PoolConf:
-    white_prefixes = {'00', '60', '30'}
-    white_index_symbol = '000985'
-    white_ma_above_period = 10
+    white_codes_filepath = './_cache/_pool_whitelist.txt'
+    black_prompts = []
 
-    black_prompts = [
-        'ST',
-        '退市',
-        '近一周大股东减持',
-    ]
+    
     day_count = 200         # 200个足够算出周期为120的均线数据
     price_adjust = 'qfq'    # 历史价格复权
     columns = ['datetime', 'open', 'high', 'low', 'close', 'volume', 'amount']
 
 
 class BuyConf:
-    time_ranges = [['14:55', '14:57']]
-    interval = 15
+    time_ranges = [['09:30', '11:30'], ['13:00', '14:57']]
+    interval = 3
     order_premium = 0.05    # 保证成功买入成交的溢价
 
     slot_count = 30         # 持股数量上限
-    slot_capacity = 10000   # 每个仓的资金上限
+    slot_capacity = 1000000   # 每个仓的资金上限
     once_buy_limit = 30     # 单次选股最多买入股票数量（若单次未买进当日不会再买这只
 
     inc_limit = 1.20        # 相对于昨日收盘的涨幅限制
@@ -74,30 +69,13 @@ class BuyConf:
 
 
 class SellConf:
-    time_ranges = [['09:31', '11:30'], ['13:00', '14:57']]
+    time_ranges = [['09:30', '11:30'], ['13:00', '14:57']]
     interval = 1
     order_premium = 0.05            # 保证成功卖出成交的溢价
 
-    switch_time_range = ['14:30', '14:57']
-    switch_hold_days = 5            # 持仓天数
-    switch_demand_daily_up = 0.002  # 换仓上限乘数
-
-    hard_time_range = ['09:31', '14:57']
-    earn_limit = 9.999              # 硬性止盈率
-    risk_limit = 1 - 0.03           # 硬性止损率
-    risk_tight = 0.002              # 硬性止损率每日上移
-
-    fall_time_range = ['09:31', '14:57']
-    fall_from_top = [
-        (1.05, 9.99, 0.02),
-        (1.02, 1.05, 0.05),
-    ]
-
-    return_time_range = ['09:31', '14:57']
-    return_of_profit = [
-        (1.07, 9.99, 0.35),
-        (1.02, 1.07, 0.95),
-    ]
+    ema_time_ranges = [['09:30', '11:30'], ['13:00', '14:57']]
+    ema_fast_period = 36
+    ema_slow_period = 42
 
 
 # ======== 盘前 ========
@@ -158,7 +136,7 @@ def check_stock(code: str, quote: Dict, curr_date: str) -> (bool, Dict):
     df = append_ak_quote_dict(my_suber.cache_history[code], quote, curr_date)
 
     result_df = select(df, code, quote)
-    buy = result_df['PASS'].values[-1]
+    buy = result_df['金叉'].values[-1]
 
     return buy, {'reason': ''}
 

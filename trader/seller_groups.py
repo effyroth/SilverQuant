@@ -70,6 +70,15 @@ class DeepseekGroupSeller(GroupSellers, HardSeller, SwitchSeller, FallSeller):
         self.group_check_sell(code, quote, curr_date, curr_time, position, held_day, max_price, history, ticks, extra)
 
 
+class EMAGroupSeller(GroupSellers, EMASeller):
+    def __init__(self, strategy_name, delegate, parameters):
+        super().__init__()
+        self.group_init(strategy_name, delegate, parameters)
+
+    def check_sell(self, code, quote, curr_date, curr_time, position, held_day, max_price, history, ticks, extra):
+        self.group_check_sell(code, quote, curr_date, curr_time, position, held_day, max_price, history, ticks, extra)
+
+
 # 龙抬头
 class LTT2GroupSeller(GroupSellers, HardSeller, OpenDaySeller, SwitchSeller, ReturnSeller, CCISeller, MASeller):
     def __init__(self, strategy_name, delegate, parameters):

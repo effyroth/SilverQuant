@@ -230,7 +230,35 @@ class MASeller(BaseSeller):
                     return True
         return False
 
+# --------------------------------
+# 死叉卖出
+# --------------------------------
+class EMASeller(BaseSeller):
+    def __init__(self, strategy_name, delegate, parameters):
+        BaseSeller.__init__(self, strategy_name, delegate, parameters)
+        print(f'ema均线死叉卖出策略', end=' ')
+        self.ma_time_range = parameters.ema_time_range
+        self.ema_fast_period = parameters.ema_fast_period
+        self.ema_slow_period = parameters.ema_slow_period
 
+    def check_sell(
+            self, code: str, quote: Dict, curr_date: str, curr_time: str,
+            position: XtPosition, held_day: int, max_price: Optional[float],
+            history: Optional[pd.DataFrame], ticks: Optional[list[list]], extra: any,
+    ) -> bool:
+        if history is not None:
+            if  (self.ma_time_range[0] <= curr_time < self.ma_time_range[1]):
+                sell_volume = position.can_use_volume
+
+                curr_price = quote['lastPrice']
+
+                df = append_ak_quote_dict(history, quote, curr_date)
+                from selector.selector_ema import select
+                result_df = select(df, code, quote, self.ema_fast_period, self.ema_slow_period)
+                if result_df['死叉'].values[-1]:
+                    self.order_sell(code, quote, sell_volume, f'破{curr_price}ema均线死叉')
+                return True
+        return False
 # --------------------------------
 # CCI 冲高回落卖出
 # --------------------------------
